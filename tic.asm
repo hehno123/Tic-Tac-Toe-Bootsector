@@ -1,41 +1,45 @@
-;will be updated in future
 [BITS 16]
 [ORG 0x7C00]
 
 start:
-     mov si, board
-     mov ah, 0x0e ;call for write character     
-     cli
-     cld
+	mov si, board
+	mov ah, 0x0e
+	cli 
+	cld
 
 printBoard:
-     lodsb
-     or al, al
-     jz game
-     int 0x10       
-     jmp printBoard
-    
+	lodsb
+	or al, al
+	jz game
+	int 0x10
+	jmp printBoard
+
 game:
-     mov si, board
-     mov ah, 0h
-     int 16h
-     mov ah, 0eh
-    
-     mov ah, [player] 
-     cmp ah, 'X'
-     je  changePlayerO
-     
-     cmp ah, 'O'
-     je changePlayerX
+	mov si, board
+	mov ah, 0h
+	int 16h
+	mov ah, 0eh
 
-changePlayerO:
-     mov byte[player], 'O'
-     jmp changeTable
+	mov ah, [player]
+	
+	cmp al, 49 ;if char is less than '1', try again
+	jl game
 
-changePlayerX:
-     mov byte[player], 'X'
-     jmp changeTable
+	cmp al, 57 ;if char is greater than '9', try again
+	jg game
 
+	sub al, 49
+	movzx bx, al
+	mov bl, byte[values + bx]
+	test bl, bl
+	jnz game
+
+checkValues:
+	movzx bx, al
+	add al, 49
+	mov cl, [player]
+	mov byte [values + bx], cl
+	
 changeTable:
      cmp al, 49
      je changeOne
@@ -53,8 +57,7 @@ changeTable:
      je changeFive
      
      cmp al, 54
-     je changeSix                                                                                                                                                        
-     
+     je changeSix                                                                                                                                                             
      cmp al, 55
      je changeSeven
 
@@ -63,8 +66,6 @@ changeTable:
      
      cmp al, 57
      je changeNine
-
-     jmp printBoard
 
 changeOne:
      mov byte [one], ah
@@ -88,9 +89,7 @@ changeFive:
 
 changeSix:
      mov byte [six], ah
-     jmp checkWin
-                                                                                                                                   
-                                                                                                                                                             
+     jmp checkWin                                                                                                                                               
 changeSeven:
      mov byte [seven], ah
      jmp checkWin
@@ -103,9 +102,7 @@ changeNine:
      mov byte [nine], ah
      jmp checkWin
 
-
 checkWin:
-     
      mov    al, [one]
      mov    ah, [two]
      cmp    al, ah
@@ -137,17 +134,16 @@ checkWin:
      je sixth_row
      
      mov al, [three]
-     mov ah, [five]                                                                                                                                                                                              
-     cmp al, ah                                                                                                
+     mov ah, [five]
+     cmp al, ah
      je seventh_row
      
      mov al, [one]
-     mov ah, [four]                                                                                                                                                                                                            
-     cmp ah, al                                                                                                                         
-     je eight_row                                                                                                                                             
-                                                                                                                                                             
+     mov ah, [four]
+     cmp ah, al
+     je eight_row 
      jmp actuallBoard
-       
+
 first_row:
      mov ah, [three]
      cmp al, ah
@@ -206,12 +202,30 @@ eight_row:
      jmp actuallBoard
 
 actuallBoard:
+     mov ah, [player] 
+     cmp ah, 'X'
+     je  changePlayerO
+     
+     cmp ah, 'O'
+     je changePlayerX
+
+changePlayerO:
+     mov byte[player], 'O'
+     jmp ok
+
+changePlayerX:
+     mov byte[player], 'X'
+
+ok:
+     mov ah, 0x00
+     mov al, 0x03
+     int 0x10
+     
      mov si, board
      mov ah, 0x0e
      jmp printBoard
 
-win:
-    
+win:    
     cmp ah, ' '
     jz actuallBoard
  
@@ -219,18 +233,7 @@ win:
     jmp printBoard2
 
 winClear:
-     
-     mov byte[one], ' '
-     mov byte[two], ' '
-     mov byte[three], ' '
-     mov byte[four], ' '
-     mov byte[five], ' '
-     mov byte[six], ' '
-     mov byte[seven], ' '
-     mov byte[eight], ' '
-     mov byte[nine], ' '
-
-     jmp actuallBoard
+     hlt
 
 printText:
     lodsb
@@ -255,46 +258,51 @@ printBoard2:
     mov bh, 0
     int 0x10
     jmp printBoard2
-       
+
 board: db 0x0D, 0x0A, 0x0D, 0x0A
 
-one:   db ' '
+one: db ' '
 
-plot1: db " | "
+fence1: db " | "
 
-two:   db ' '
+two: db ' '
 
-plot2: db " | "
+fence2: db " | "
 
 three: db ' '
-nowalinia1:  db 0x0D, 0x0A
 
-four:  db ' '
+newline1: db 0x0D, 0x0A
 
-plot3: db " | "
+four: db ' '
 
-five:  db ' '
+fence3: db " | "
 
-plot4: db " | "
+five: db ' '
 
-six:   db ' '
-nowalinia2: db 0x0D, 0x0A
+fence4: db " | "
+
+six: db ' '
+
+newline2: db 0x0D, 0x0A
 
 seven: db ' '
 
-plot5: db " | "
+fence5: db " | "
 
 eight: db ' '
 
-plot6: db " | "
+fence6: db " | "
 
-nine: db ' ' , 0
+nine: db ' ', 0
 
-plot: db " | "
+fence: db " | "
 
-player: db 88, 0
+player: db 'X', 0
 
-text: db " You won game broooo!!!!", 0x0D, 0x0A
+text: db 0x0A, "Victory", 0x0D, 0x0A, 0
+
+values: db 0,0,0,0,0,0,0,0,0 ;Array of choices
 
 times 510 - ($-$$) db 0
 dw 0xaa55
+
